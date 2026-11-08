@@ -1,0 +1,135 @@
+economy:
+  enabled: false
+  apply-cost: 1000.0
+  remove-cost: 500.0
+  upgrade-chance-cost: 250.0
+enchants:
+  vampirism:
+    enabled: true
+    name: "&cВампиризм"
+    max-level: 3
+    chance: 30.0
+    description: ["&7Восстанавливает здоровье при ударе."]
+  lightning:
+    enabled: true
+    name: "&eМолния"
+    max-level: 3
+    chance: 15.0
+    description: ["&7Шанс ударить врага молнией."]
+  poison:
+    enabled: true
+    name: "&aОтравление"
+    max-level: 3
+    chance: 20.0
+    description: ["&7Отравляет цель при ударе."]
+  stun:
+    enabled: true
+    name: "&8Оглушение"
+    max-level: 2
+    chance: 10.0
+    description: ["&7Накладывает слепоту и замедление."]
+  hunter:
+    enabled: true
+    name: "&6Охотник"
+    max-level: 3
+    chance: 100.0
+    description: ["&7Доп. урон по целям с полным здоровьем."]
+  bleeding:
+    enabled: true
+    name: "&4Кровотечение"
+    max-level: 3
+    chance: 25.0
+    description: ["&7Вызывает кровотечение у цели."]
+  antitotem:
+    enabled: true
+    name: "&0Анти-Тотем"
+    max-level: 3
+    chance: 10.0
+    description: ["&7Шанс пробить тотем бессмертия."]
+  titan:
+    enabled: true
+    name: "&7Титан"
+    max-level: 4
+    chance: 100.0
+    description: ["&7Пассивное снижение получаемого урона."]
+  dodge:
+    enabled: true
+    name: "&bУклонение"
+    max-level: 3
+    chance: 100.0
+    description: ["&7Шанс полностью избежать урона."]
+  thornsplus:
+    enabled: true
+    name: "&2Шипы+"
+    max-level: 3
+    chance: 100.0
+    description: ["&7Возвращает часть урона атакующему."]
+  execution:
+    enabled: true
+    name: "&4Казнь"
+    max-level: 3
+    chance: 15.0 # Базовый шанс 15%
+    cooldown: 0
+    description:
+      - "&7Шанс мгновенно добить противника,"
+      - "&7если у него мало здоровья."
+  drill:
+    enabled: true
+    name: "&6Бур 3x3"
+    max-level: 3
+    chance: 100.0
+    description: ["&7Копает блоки областью 3x3."]
+  autosmelt:
+    enabled: true
+    name: "&cАвтоплавка"
+    max-level: 1
+    chance: 100.0
+    description: ["&7Автоматически переплавляет руды."]
+  magnet:
+    enabled: true
+    name: "&bМагнит"
+    max-level: 1
+    chance: 100.0
+    description: ["&7Добытые блоки летят сразу в инвентарь."]
+  telepathy:
+    enabled: true
+    name: "&5Телепатия"
+    max-level: 1
+    chance: 100.0
+    description: ["&7То же самое, что и Магнит."]
+  haste:
+    enabled: true
+    name: "&eСпешка"
+    max-level: 3
+    chance: 100.0
+    description: ["&7Дает эффект Ускорения при копании."]
+  nightminer:
+    enabled: true
+    name: "&1Ночной Шахтер"
+    max-level: 1
+    chance: 100.0
+    description: ["&7Дает Ночное зрение, когда инструмент в руке."]
+  doubleore:
+    enabled: true
+    name: "&aДвойная Руда"
+    max-level: 3
+    chance: 15.0
+    description: ["&7Шанс удвоить добытую руду."]
+  experienced:
+    enabled: true
+    name: "&aОпытный"
+    max-level: 3
+    chance: 100.0
+    description: ["&7Увеличивает выпадение опыта с блоков."]
+  farmer:
+    enabled: true
+    name: "&aФермер"
+    max-level: 3
+    chance: 100.0
+    description: [ "&7ПКМ по растению ускоряет его рост." ]
+  lumberjack:
+    enabled: true
+    name: "&6Дровосек"
+    max-level: 1
+    chance: 100.0
+    description: [ "&7Срубает всё дерево целиком." ]

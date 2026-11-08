@@ -1,0 +1,10 @@
+enchants:
+  execution:
+    enabled: true
+    name: "&4Казнь"
+    max-level: 3
+    chance: 15.0 # Базовый шанс 15%
+    cooldown: 0
+    description:
+      - "&7Шанс мгновенно добить противника,"
+      - "&7если у него мало здоровья."

@@ -1,0 +1,4 @@
+prefix: "&8[&4VsamEnchants&8] &r"
+errors:
+  no-permission: "&cУ вас нет прав!"
+  not-player: "&cТолько для игроков."
