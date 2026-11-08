@@ -1,7 +1,9 @@
 package com.vsamenchants;
 
+import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.TileState;
 import org.bukkit.entity.Player;
@@ -26,7 +28,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Слушатель событий кастомного стола с абсолютной защитой от дюпа при поломке и взрывах.
+ * Слушатель событий Алтаря Зачарований: строгий контроль пустых книг и интерфейса.
  */
 public class CustomTableListener implements Listener {
 
@@ -50,22 +52,14 @@ public class CustomTableListener implements Listener {
         }
     }
 
-    /**
-     * ПРИОРИТЕТ LOWEST: Срабатывает САМЫМ ПЕРВЫМ до любых плагинов и слушателей.
-     * Полностью отменяет событие, пресекая ванильный дроп и сторонние обработчики.
-     */
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         if (!manager.isCustomTableBlock(block)) return;
 
-        // 1. Отменяем событие, запрещая ванильный дроп
         event.setCancelled(true);
-
-        // 2. Превращаем блок в воздух
         block.setType(Material.AIR);
 
-        // 3. Выпадаем строго ОДИН кастомный стол
         if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
             block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
         }
@@ -113,30 +107,90 @@ public class CustomTableListener implements Listener {
 
         int slot = event.getRawSlot();
         Inventory top = event.getView().getTopInventory();
+        if (!(event.getWhoClicked() instanceof Player player)) return;
 
+        CustomTableGui.AltarSession session = CustomTableGui.getSession(player);
+
+        // Обработка клика в инвентаре игрока
         if (slot >= top.getSize()) {
             if (event.isShiftClick()) {
-                plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    CustomTableGui.updateEnchantButton(top, top.getItem(CustomTableGui.ITEM_SLOT), plugin);
-                });
+                ItemStack clicked = event.getCurrentItem();
+                if (clicked != null) {
+                    // Разрешаем shift-клик только для книг и лазурита
+                    if (clicked.getType() != Material.BOOK && clicked.getType() != Material.LAPIS_LAZULI) {
+                        event.setCancelled(true);
+                        player.sendMessage(ChatColor.RED + "В алтарь можно помещать только обычные книги и лазурит!");
+                    }
+                }
             }
             return;
         }
 
-        if (slot != CustomTableGui.ITEM_SLOT && slot != CustomTableGui.LAPIS_SLOT) {
+        // Защита от помещения неподходящих предметов курсором
+        ItemStack cursor = event.getCursor();
+        if (slot == CustomTableGui.BOOK_SLOT) {
+            if (cursor != null && !cursor.getType().isAir() && cursor.getType() != Material.BOOK) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "В этот слот можно поместить только обычную пустую книгу!");
+                return;
+            }
+        } else if (slot == CustomTableGui.LAPIS_SLOT) {
+            if (cursor != null && !cursor.getType().isAir() && cursor.getType() != Material.LAPIS_LAZULI) {
+                event.setCancelled(true);
+                player.sendMessage(ChatColor.RED + "В этот слот можно поместить только лазурит!");
+                return;
+            }
+        } else {
+            // Любые другие слоты внутри меню защищены от перемещения
             event.setCancelled(true);
         }
 
-        if (!(event.getWhoClicked() instanceof Player player)) return;
+        // --- ОБРАБОТКА ИНТЕРАКТИВНЫХ КНОПОК ---
+        switch (slot) {
+            // Выбор категорий
+            case CustomTableGui.CATEGORY_COMBAT_SLOT -> {
+                session.setCategory(CustomTableGui.EnchantCategory.COMBAT);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
+            case CustomTableGui.CATEGORY_DEFENSE_SLOT -> {
+                session.setCategory(CustomTableGui.EnchantCategory.DEFENSE);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
+            case CustomTableGui.CATEGORY_MINING_SLOT -> {
+                session.setCategory(CustomTableGui.EnchantCategory.MINING);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
 
-        // Клик по центральной кнопке зачарования
-        if (slot == CustomTableGui.ENCHANT_BUTTON_SLOT) {
-            CustomTableGui.processEnchant(player, top, plugin);
+            // Регулировка ставки опыта
+            case CustomTableGui.BET_MINUS_5_SLOT -> {
+                session.addBet(-5);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 0.8f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
+            case CustomTableGui.BET_MINUS_1_SLOT -> {
+                session.addBet(-1);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 0.9f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
+            case CustomTableGui.BET_PLUS_1_SLOT -> {
+                session.addBet(1);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.1f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
+            case CustomTableGui.BET_PLUS_5_SLOT -> {
+                session.addBet(5);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.3f);
+                CustomTableGui.renderControls(top, session, plugin);
+            }
+
+            // Кнопка сотворения
+            case CustomTableGui.ENCHANT_BUTTON_SLOT -> {
+                CustomTableGui.processEnchant(player, top, plugin);
+            }
         }
-
-        plugin.getServer().getScheduler().runTask(plugin, () -> {
-            CustomTableGui.updateEnchantButton(top, top.getItem(CustomTableGui.ITEM_SLOT), plugin);
-        });
     }
 
     @EventHandler
@@ -146,11 +200,13 @@ public class CustomTableListener implements Listener {
         Inventory inv = event.getInventory();
         Player player = (Player) event.getPlayer();
 
-        returnItem(player, inv.getItem(CustomTableGui.ITEM_SLOT));
+        returnItem(player, inv.getItem(CustomTableGui.BOOK_SLOT));
         returnItem(player, inv.getItem(CustomTableGui.LAPIS_SLOT));
 
-        inv.setItem(CustomTableGui.ITEM_SLOT, null);
+        inv.setItem(CustomTableGui.BOOK_SLOT, null);
         inv.setItem(CustomTableGui.LAPIS_SLOT, null);
+
+        CustomTableGui.removeSession(player);
     }
 
     @EventHandler

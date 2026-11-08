@@ -6,7 +6,7 @@ custom-table:
     name: "&5&lАлтарь Зачарований"
     lore:
       - "&7Древний чародейский стол, способный"
-      - "&7накладывать могущественные кастомные чары."
+      - "&7наделять пустые книги могущественными чарами."
       - ""
       - "&eПоставьте и нажмите ПКМ для открытия."
 
@@ -22,47 +22,39 @@ custom-table:
       O: OBSIDIAN
       E: ENCHANTING_TABLE
 
-  # Единое Таинство Зачарования
-  enchanting:
-    exp-cost: 30        # Стоимость: 30 уровней
-    lapis-cost: 3       # Стоимость: 3 лазурита
-    success-chance: 80.0 # Шанс успеха: 80%
-
-    pools:
-      # Легендарные чары (~10% шанс)
-      legendary:
-        - execution
-        - antitotem
-        - drill
-
-      # Редкие чары (~30% шанс)
-      rare:
-        - vampirism
-        - lightning
-        - stun
-        - titan
-        - dodge
-        - doubleore
-        - autosmelt
-        - telepathy     # Только Телепатия
-        - lumberjack
-
-      # Обычные базовые чары (~60% шанс)
-      common:
-        - poison
-        - bleeding
-        - hunter
-        - thornsplus
-        - haste
-        - nightminer
-        - experienced
-        - farmer
+  # Категории доступных чар для сотворения книг
+  categories:
+    combat:
+      - vampirism
+      - lightning
+      - poison
+      - stun
+      - hunter
+      - bleeding
+      - antitotem
+      - execution
+    defense:
+      - titan
+      - dodge
+      - thornsplus
+    mining:
+      - drill
+      - autosmelt
+      - telepathy
+      - haste
+      - nightminer
+      - doubleore
+      - experienced
+      - farmer
+      - lumberjack
 
 economy:
   enabled: false
   apply-cost: 1000.0
   remove-cost: 500.0
   upgrade-chance-cost: 250.0
+
+# Список параметров самих зачарований остается прежним
 
 enchants:
   vampirism:
