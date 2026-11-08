@@ -1,9 +1,7 @@
 package com.vsamenchants;
 
-import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
 import org.bukkit.Material;
-import org.bukkit.Sound;
 import org.bukkit.block.Block;
 import org.bukkit.block.TileState;
 import org.bukkit.entity.Player;
@@ -12,7 +10,9 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -21,10 +21,12 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Слушатель событий размещения, взаимодействия и работы меню кастомного стола зачарований.
+ * Слушатель событий кастомного стола с абсолютной защитой от дюпа при поломке и взрывах.
  */
 public class CustomTableListener implements Listener {
 
@@ -36,9 +38,6 @@ public class CustomTableListener implements Listener {
         this.manager = plugin.getCustomTableManager();
     }
 
-    /**
-     * Установка кастомного стола: помечаем TileState блока в мире.
-     */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlace(BlockPlaceEvent event) {
         ItemStack item = event.getItemInHand();
@@ -52,7 +51,7 @@ public class CustomTableListener implements Listener {
     }
 
     /**
-     * Разрушение стола: сохраняем кастомный предмет с NBT и лором.
+     * Поломка стола: отменяем ванильное событие полностью во избежание выпадения обычного стола.
      */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
@@ -61,7 +60,13 @@ public class CustomTableListener implements Listener {
 
         if (block.getState() instanceof TileState tileState) {
             if (tileState.getPersistentDataContainer().has(manager.getTableItemKey(), PersistentDataType.BYTE)) {
-                event.setDropItems(false);
+                // 1. Полностью отменяем ванильный слом, блокируя ванильный дроп стола
+                event.setCancelled(true);
+
+                // 2. Вручную превращаем блок в воздух
+                block.setType(Material.AIR);
+
+                // 3. Выпадаем ровно ОДИН кастомный стол (если не в креативе)
                 if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
                     block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
                 }
@@ -70,8 +75,32 @@ public class CustomTableListener implements Listener {
     }
 
     /**
-     * Открытие меню по ПКМ по блоку кастомного стола.
+     * Защита от дюпа при взрывах криперов, ТНТ и визеров.
      */
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onEntityExplode(EntityExplodeEvent event) {
+        handleExplosion(event.blockList());
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        handleExplosion(event.blockList());
+    }
+
+    private void handleExplosion(List<Block> blocks) {
+        Iterator<Block> iterator = blocks.iterator();
+        while (iterator.hasNext()) {
+            Block block = iterator.next();
+            if (block.getType() == Material.ENCHANTING_TABLE && block.getState() instanceof TileState tileState) {
+                if (tileState.getPersistentDataContainer().has(manager.getTableItemKey(), PersistentDataType.BYTE)) {
+                    iterator.remove(); // Убираем из стандартного списка взрыва
+                    block.setType(Material.AIR);
+                    block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
+                }
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
@@ -82,15 +111,12 @@ public class CustomTableListener implements Listener {
 
         if (block.getState() instanceof TileState tileState) {
             if (tileState.getPersistentDataContainer().has(manager.getTableItemKey(), PersistentDataType.BYTE)) {
-                event.setCancelled(true); // Блокируем ванильный интерфейс стола зачарований
+                event.setCancelled(true);
                 CustomTableGui.open(event.getPlayer(), plugin);
             }
         }
     }
 
-    /**
-     * Обработка действий внутри интерфейса Алтаря Зачарований.
-     */
     @EventHandler
     public void onTableGuiClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(CustomTableGui.TITLE)) return;
@@ -98,7 +124,6 @@ public class CustomTableListener implements Listener {
         int slot = event.getRawSlot();
         Inventory top = event.getView().getTopInventory();
 
-        // Клик в инвентаре игрока: обновляем кнопки при shift-click
         if (slot >= top.getSize()) {
             if (event.isShiftClick()) {
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
@@ -108,7 +133,6 @@ public class CustomTableListener implements Listener {
             return;
         }
 
-        // Разрешаем класть/забирать только в слоты предмета и лазурита
         if (slot != CustomTableGui.ITEM_SLOT && slot != CustomTableGui.LAPIS_SLOT) {
             event.setCancelled(true);
         }
@@ -128,9 +152,6 @@ public class CustomTableListener implements Listener {
         });
     }
 
-    /**
-     * Безопасный возврат предметов игроку при закрытии меню алтаря.
-     */
     @EventHandler
     public void onTableGuiClose(InventoryCloseEvent event) {
         if (!event.getView().getTitle().equals(CustomTableGui.TITLE)) return;
@@ -145,9 +166,6 @@ public class CustomTableListener implements Listener {
         inv.setItem(CustomTableGui.LAPIS_SLOT, null);
     }
 
-    /**
-     * Обработка кликов в меню настройки крафта стола.
-     */
     @EventHandler
     public void onCraftEditorClick(InventoryClickEvent event) {
         if (!event.getView().getTitle().equals(TableCraftEditorGui.TITLE)) return;
@@ -164,22 +182,12 @@ public class CustomTableListener implements Listener {
             }
         }
 
-        // Разрешаем менять только слоты сетки 3х3 (если есть права)
         if (slot < top.getSize() && !isCraftSlot) {
             event.setCancelled(true);
             if (slot == TableCraftEditorGui.SAVE_SLOT && player.hasPermission("vsamenchants.admin")) {
                 TableCraftEditorGui.saveRecipeFromGui(player, top, plugin);
             }
         }
-    }
-
-    /**
-     * Безопасный возврат ингредиентов при выходе из редактора крафта.
-     */
-    @EventHandler
-    public void onCraftEditorClose(InventoryCloseEvent event) {
-        if (!event.getView().getTitle().equals(TableCraftEditorGui.TITLE)) return;
-        // Не возвращаем предметы принудительно, так как они подтягиваются из конфига как шаблон
     }
 
     private void returnItem(Player player, ItemStack item) {

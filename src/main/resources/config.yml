@@ -133,7 +133,9 @@ enchants:
     max-level: 1
     chance: 100.0
     description: [ "&7Срубает всё дерево целиком." ]
-# Настройки Алтаря Зачарований
+# ========================================================
+#            Настройки Алтаря Зачарований
+# ========================================================
 custom-table:
   item:
     name: "&5&lАлтарь Зачарований"
@@ -143,7 +145,6 @@ custom-table:
       - ""
       - "&eПоставьте и нажмите ПКМ для открытия."
 
-  # Крафт стола (можно настроить в игре командой /ve setcraft)
   recipe:
     enabled: true
     shape:
@@ -156,28 +157,66 @@ custom-table:
       O: OBSIDIAN
       E: ENCHANTING_TABLE
 
-  # Настройки рангов зачарования в меню алтаря
+  # Разделение по тирам, пулам зачарований и затратам
   tiers:
     tier-1:
       name: "&aОбычное Таинство"
-      chance: 75.0      # Шанс успеха в %
-      exp-levels: 10    # Стоимость уровней
-      lapis-cost: 1     # Стоимость лазурита (0 для отключения)
+      description: "Базовые чары I уровня (Спешка, Охотник, Опытный...)"
+      chance: 80.0      # Высокий шанс на базовые чары
+      exp-levels: 10    # 10 уровней
+      lapis-cost: 1
+      level-min: 1
+      level-max: 1
+      enchants:
+        - poison
+        - bleeding
+        - hunter
+        - thornsplus
+        - haste
+        - nightminer
+        - experienced
+        - farmer
+
     tier-2:
       name: "&bДревнее Таинство"
-      chance: 50.0
+      description: "Редкие чары I-II уровня (Вампиризм, Молния, Магнит...)"
+      chance: 60.0
       exp-levels: 25
       lapis-cost: 3
+      level-min: 1
+      level-max: 2
+      enchants:
+        - vampirism
+        - lightning
+        - stun
+        - titan
+        - dodge
+        - doubleore
+        - autosmelt
+        - magnet
+        - telepathy
+        - lumberjack
+
     tier-3:
       name: "&6Мифическое Таинство"
-      chance: 35.0
-      exp-levels: 40
+      description: "Легендарные анархо-чары (Казнь, Анти-Тотем, Бур 3x3...)"
+      chance: 40.0
+      exp-levels: 35
       lapis-cost: 5
+      level-min: 2
+      level-max: 4
+      enchants:
+        - execution
+        - antitotem
+        - drill
+        - vampirism
+        - lightning
+        - titan
+        - dodge
+        - doubleore
 
-economy:
-  enabled: false
-  apply-cost: 1000.0
-  remove-cost: 500.0
-  upgrade-chance-cost: 250.0
-
-# ... остальные параметры enchants остаются без изменений
+  economy:
+    enabled: false
+    apply-cost: 1000.0
+    remove-cost: 500.0
+    upgrade-chance-cost: 250.0

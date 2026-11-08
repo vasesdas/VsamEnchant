@@ -13,7 +13,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.*;
 
 /**
- * Графический интерфейс Алтаря Зачарований с выбором тиров и шансов.
+ * Графический интерфейс Алтаря с разделением зачарований по тирам и шансам.
  */
 public class CustomTableGui {
 
@@ -29,7 +29,6 @@ public class CustomTableGui {
         Inventory inv = Bukkit.createInventory(null, 54, TITLE);
         fillBackground(inv);
 
-        // Информационные и целевые маркеры
         inv.setItem(10, createGuiItem(Material.PURPLE_STAINED_GLASS_PANE, "&dПоместите предмет ниже ⇩", null));
         inv.setItem(16, createGuiItem(Material.BLUE_STAINED_GLASS_PANE, "&9Поместите лазурит ниже ⇩", null));
 
@@ -49,6 +48,9 @@ public class CustomTableGui {
                 "&7Поместите экипировку и лазурит,",
                 "&7затем выберите ранг таинства.",
                 "",
+                "&fКаждый ранг имеет свой уникальный",
+                "&fпул чар от обычных до мифических!",
+                "",
                 "&cВнимание: &7При неудаче ингредиенты",
                 "&7сгорают, но предмет сохраняется!"
         )));
@@ -66,6 +68,7 @@ public class CustomTableGui {
         double chance = plugin.getConfig().getDouble(path + ".chance", 75.0);
         int expCost = plugin.getConfig().getInt(path + ".exp-levels", 10);
         int lapisCost = plugin.getConfig().getInt(path + ".lapis-cost", 1);
+        String desc = plugin.getConfig().getString(path + ".description", "");
 
         Material mat = switch (tier) {
             case 1 -> Material.BOOK;
@@ -75,6 +78,10 @@ public class CustomTableGui {
 
         List<String> lore = new ArrayList<>();
         lore.add("");
+        if (!desc.isEmpty()) {
+            lore.add(color("&7" + desc));
+            lore.add("");
+        }
         lore.add(color("&fШанс успеха: &a" + chance + "%"));
         lore.add(color("&fТребуется уровней: &e" + expCost + " lvl"));
         lore.add(color("&fТребуется лазурита: &9" + lapisCost + " шт."));
@@ -89,9 +96,6 @@ public class CustomTableGui {
         return createGuiItem(mat, name, lore);
     }
 
-    /**
-     * Попытка зачаровать предмет выбранным тиром.
-     */
     public static void processEnchant(Player player, Inventory inv, int tier, VsamEnchants plugin) {
         ItemStack target = inv.getItem(ITEM_SLOT);
         if (target == null || target.getType().isAir()) {
@@ -104,15 +108,18 @@ public class CustomTableGui {
         int expCost = plugin.getConfig().getInt(path + ".exp-levels", 10);
         int lapisCost = plugin.getConfig().getInt(path + ".lapis-cost", 1);
         double chance = plugin.getConfig().getDouble(path + ".chance", 70.0);
+        int levelMin = plugin.getConfig().getInt(path + ".level-min", 1);
+        int levelMax = plugin.getConfig().getInt(path + ".level-max", 1);
 
-        // Проверка уровней опыта
+        // Список разрешенных зачарований строго для этого тира
+        List<String> allowedEnchantIds = plugin.getConfig().getStringList(path + ".enchants");
+
         if (player.getLevel() < expCost) {
             player.sendMessage(color("&cВам не хватает уровней опыта! Требуется: &e" + expCost + " lvl"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             return;
         }
 
-        // Проверка лазурита
         ItemStack lapis = inv.getItem(LAPIS_SLOT);
         if (lapisCost > 0) {
             if (lapis == null || lapis.getType() != Material.LAPIS_LAZULI || lapis.getAmount() < lapisCost) {
@@ -122,22 +129,23 @@ public class CustomTableGui {
             }
         }
 
-        // Поиск доступных зачарований для предмета
+        // Фильтруем зачарования, доступные для данного тира И подходящие под целевой предмет
         List<CustomEnchant> availableEnchants = new ArrayList<>();
-        for (String id : plugin.getEnchantManager().getRegisteredIds()) {
+        for (String id : allowedEnchantIds) {
             CustomEnchant enchant = plugin.getEnchantManager().getEnchant(id);
             if (enchant == null || !enchant.isEnabled()) continue;
 
             if (enchant.getTarget().includes(target.getType())) {
                 int currentLevel = plugin.getEnchantManager().getEnchantLevel(target, enchant);
-                if (currentLevel < enchant.getMaxLevel()) {
+                // Зачарование подходит, если оно еще не максимального уровня для этого тира
+                if (currentLevel < Math.min(enchant.getMaxLevel(), levelMax)) {
                     availableEnchants.add(enchant);
                 }
             }
         }
 
         if (availableEnchants.isEmpty()) {
-            player.sendMessage(color("&cНа этот предмет больше нельзя наложить доступных зачарований!"));
+            player.sendMessage(color("&cВ этом таинстве нет доступных зачарований для данного предмета! Выберите другой ранг."));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             return;
         }
@@ -152,9 +160,8 @@ public class CustomTableGui {
             }
         }
 
-        // Проверка шанса на успех
+        // Проверка вероятности
         if (Math.random() * 100.0 > chance) {
-            // Неудача
             player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1.0f, 0.8f);
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.5f, 0.5f);
             player.spawnParticle(Particle.SMOKE_LARGE, player.getLocation().add(0, 1, 0), 20, 0.3, 0.3, 0.3, 0.05);
@@ -162,29 +169,23 @@ public class CustomTableGui {
             return;
         }
 
-        // Успех: выбор случайного зачарования и уровня
+        // Успех: случайный выбор из пула этого тира
         CustomEnchant chosen = availableEnchants.get(new Random().nextInt(availableEnchants.size()));
         int currentLvl = plugin.getEnchantManager().getEnchantLevel(target, chosen);
 
-        int newLevel;
-        if (tier == 1) {
-            newLevel = Math.min(chosen.getMaxLevel(), Math.max(1, currentLvl + 1));
-        } else if (tier == 2) {
-            newLevel = Math.min(chosen.getMaxLevel(), Math.max(currentLvl + 1, 2));
-        } else {
-            newLevel = chosen.getMaxLevel();
-        }
+        // Расчет уровня: в пределах levelMin..levelMax, не ниже текущего + 1
+        int targetLvl = Math.max(levelMin, currentLvl + 1);
+        int finalLevel = Math.min(chosen.getMaxLevel(), Math.min(targetLvl, levelMax));
 
-        plugin.getEnchantManager().applyEnchant(target, chosen, newLevel);
+        plugin.getEnchantManager().applyEnchant(target, chosen, finalLevel);
         inv.setItem(ITEM_SLOT, target);
 
-        // Визуальные и звуковые эффекты
         player.playSound(player.getLocation(), Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0f, 1.0f);
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
-        player.spawnParticle(Particle.ENCHANTMENT_TABLE, player.getLocation().add(0, 1.5, 0), 50, 0.5, 0.5, 0.5, 0.1);
+        player.spawnParticle(Particle.ENCHANTMENT_TABLE, player.getLocation().add(0, 1.5, 0), 60, 0.5, 0.5, 0.5, 0.1);
         player.spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1.2, 0), 40, 0.4, 0.4, 0.4, 0.2);
 
-        player.sendMessage(color("&aАлтарь наделил ваш предмет силой: &e" + chosen.getName() + " " + toRoman(newLevel) + "&a!"));
+        player.sendMessage(color("&aАлтарь наделил ваш предмет силой: &e" + chosen.getName() + " " + toRoman(finalLevel) + "&a!"));
         updateTierButtons(inv, target, plugin);
     }
 
