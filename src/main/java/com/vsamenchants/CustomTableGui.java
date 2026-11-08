@@ -13,17 +13,14 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.*;
 
 /**
- * Графический интерфейс Алтаря с разделением зачарований по тирам и шансам.
+ * Графический интерфейс Алтаря: Единое Таинство 30-го уровня с взвешенным шансом редкости.
  */
 public class CustomTableGui {
 
     public static final String TITLE = ChatColor.translateAlternateColorCodes('&', "&5&lАлтарь Зачарований");
     public static final int ITEM_SLOT = 19;
     public static final int LAPIS_SLOT = 25;
-
-    public static final int TIER_1_SLOT = 38;
-    public static final int TIER_2_SLOT = 40;
-    public static final int TIER_3_SLOT = 42;
+    public static final int ENCHANT_BUTTON_SLOT = 31;
 
     public static void open(Player player, VsamEnchants plugin) {
         Inventory inv = Bukkit.createInventory(null, 54, TITLE);
@@ -32,7 +29,7 @@ public class CustomTableGui {
         inv.setItem(10, createGuiItem(Material.PURPLE_STAINED_GLASS_PANE, "&dПоместите предмет ниже ⇩", null));
         inv.setItem(16, createGuiItem(Material.BLUE_STAINED_GLASS_PANE, "&9Поместите лазурит ниже ⇩", null));
 
-        updateTierButtons(inv, null, plugin);
+        updateEnchantButton(inv, null, plugin);
 
         player.openInventory(inv);
     }
@@ -40,51 +37,37 @@ public class CustomTableGui {
     public static void fillBackground(Inventory inv) {
         ItemStack filler = createGuiItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
         for (int i = 0; i < 54; i++) {
-            if (i == ITEM_SLOT || i == LAPIS_SLOT || i == TIER_1_SLOT || i == TIER_2_SLOT || i == TIER_3_SLOT) continue;
+            if (i == ITEM_SLOT || i == LAPIS_SLOT || i == ENCHANT_BUTTON_SLOT) continue;
             inv.setItem(i, filler);
         }
 
         inv.setItem(4, createGuiItem(Material.ENCHANTING_TABLE, "&5&lДревний Алтарь", Arrays.asList(
                 "&7Поместите экипировку и лазурит,",
-                "&7затем выберите ранг таинства.",
+                "&7чтобы провести таинство зачарования.",
                 "",
-                "&fКаждый ранг имеет свой уникальный",
-                "&fпул чар от обычных до мифических!",
+                "&fСтоимость: &e30 уровней опыта",
+                "&fТребуется: &93 лазурита",
+                "",
+                "&7Редкости зачарований:",
+                " &a• Обычные (60%): &7Базовые эффекты",
+                " &b• Редкие (30%): &7Продвинутые эффекты",
+                " &6• Легендарные (10%): &4Казнь, Анти-Тотем, Бур 3x3",
                 "",
                 "&cВнимание: &7При неудаче ингредиенты",
                 "&7сгорают, но предмет сохраняется!"
         )));
     }
 
-    public static void updateTierButtons(Inventory inv, ItemStack targetItem, VsamEnchants plugin) {
-        inv.setItem(TIER_1_SLOT, createTierButton(1, targetItem, plugin));
-        inv.setItem(TIER_2_SLOT, createTierButton(2, targetItem, plugin));
-        inv.setItem(TIER_3_SLOT, createTierButton(3, targetItem, plugin));
-    }
-
-    private static ItemStack createTierButton(int tier, ItemStack targetItem, VsamEnchants plugin) {
-        String path = "custom-table.tiers.tier-" + tier;
-        String name = plugin.getConfig().getString(path + ".name", "&eТир " + tier);
-        double chance = plugin.getConfig().getDouble(path + ".chance", 75.0);
-        int expCost = plugin.getConfig().getInt(path + ".exp-levels", 10);
-        int lapisCost = plugin.getConfig().getInt(path + ".lapis-cost", 1);
-        String desc = plugin.getConfig().getString(path + ".description", "");
-
-        Material mat = switch (tier) {
-            case 1 -> Material.BOOK;
-            case 2 -> Material.ENCHANTED_BOOK;
-            default -> Material.NETHER_STAR;
-        };
+    public static void updateEnchantButton(Inventory inv, ItemStack targetItem, VsamEnchants plugin) {
+        int expCost = plugin.getConfig().getInt("custom-table.enchanting.exp-cost", 30);
+        int lapisCost = plugin.getConfig().getInt("custom-table.enchanting.lapis-cost", 3);
+        double chance = plugin.getConfig().getDouble("custom-table.enchanting.success-chance", 80.0);
 
         List<String> lore = new ArrayList<>();
         lore.add("");
-        if (!desc.isEmpty()) {
-            lore.add(color("&7" + desc));
-            lore.add("");
-        }
-        lore.add(color("&fШанс успеха: &a" + chance + "%"));
-        lore.add(color("&fТребуется уровней: &e" + expCost + " lvl"));
+        lore.add(color("&fСтоимость: &e" + expCost + " lvl"));
         lore.add(color("&fТребуется лазурита: &9" + lapisCost + " шт."));
+        lore.add(color("&fШанс наложения: &a" + chance + "%"));
         lore.add("");
 
         if (targetItem == null || targetItem.getType().isAir()) {
@@ -93,10 +76,10 @@ public class CustomTableGui {
             lore.add(color("&aНажмите, чтобы провести обряд!"));
         }
 
-        return createGuiItem(mat, name, lore);
+        inv.setItem(ENCHANT_BUTTON_SLOT, createGuiItem(Material.NETHER_STAR, "&6&lПровести Таинство Зачарования", lore));
     }
 
-    public static void processEnchant(Player player, Inventory inv, int tier, VsamEnchants plugin) {
+    public static void processEnchant(Player player, Inventory inv, VsamEnchants plugin) {
         ItemStack target = inv.getItem(ITEM_SLOT);
         if (target == null || target.getType().isAir()) {
             player.sendMessage(color("&cПоместите предмет в алтарь перед началом обряда!"));
@@ -104,15 +87,9 @@ public class CustomTableGui {
             return;
         }
 
-        String path = "custom-table.tiers.tier-" + tier;
-        int expCost = plugin.getConfig().getInt(path + ".exp-levels", 10);
-        int lapisCost = plugin.getConfig().getInt(path + ".lapis-cost", 1);
-        double chance = plugin.getConfig().getDouble(path + ".chance", 70.0);
-        int levelMin = plugin.getConfig().getInt(path + ".level-min", 1);
-        int levelMax = plugin.getConfig().getInt(path + ".level-max", 1);
-
-        // Список разрешенных зачарований строго для этого тира
-        List<String> allowedEnchantIds = plugin.getConfig().getStringList(path + ".enchants");
+        int expCost = plugin.getConfig().getInt("custom-table.enchanting.exp-cost", 30);
+        int lapisCost = plugin.getConfig().getInt("custom-table.enchanting.lapis-cost", 3);
+        double chance = plugin.getConfig().getDouble("custom-table.enchanting.success-chance", 80.0);
 
         if (player.getLevel() < expCost) {
             player.sendMessage(color("&cВам не хватает уровней опыта! Требуется: &e" + expCost + " lvl"));
@@ -129,23 +106,22 @@ public class CustomTableGui {
             }
         }
 
-        // Фильтруем зачарования, доступные для данного тира И подходящие под целевой предмет
-        List<CustomEnchant> availableEnchants = new ArrayList<>();
-        for (String id : allowedEnchantIds) {
-            CustomEnchant enchant = plugin.getEnchantManager().getEnchant(id);
-            if (enchant == null || !enchant.isEnabled()) continue;
+        // Пулы редкостей из config.yml
+        List<String> legendaryIds = plugin.getConfig().getStringList("custom-table.enchanting.pools.legendary");
+        List<String> rareIds = plugin.getConfig().getStringList("custom-table.enchanting.pools.rare");
+        List<String> commonIds = plugin.getConfig().getStringList("custom-table.enchanting.pools.common");
 
-            if (enchant.getTarget().includes(target.getType())) {
-                int currentLevel = plugin.getEnchantManager().getEnchantLevel(target, enchant);
-                // Зачарование подходит, если оно еще не максимального уровня для этого тира
-                if (currentLevel < Math.min(enchant.getMaxLevel(), levelMax)) {
-                    availableEnchants.add(enchant);
-                }
-            }
-        }
+        List<CustomEnchant> legendaryAvailable = filterEnchants(legendaryIds, target, plugin);
+        List<CustomEnchant> rareAvailable = filterEnchants(rareIds, target, plugin);
+        List<CustomEnchant> commonAvailable = filterEnchants(commonIds, target, plugin);
 
-        if (availableEnchants.isEmpty()) {
-            player.sendMessage(color("&cВ этом таинстве нет доступных зачарований для данного предмета! Выберите другой ранг."));
+        List<CustomEnchant> allAvailable = new ArrayList<>();
+        allAvailable.addAll(legendaryAvailable);
+        allAvailable.addAll(rareAvailable);
+        allAvailable.addAll(commonAvailable);
+
+        if (allAvailable.isEmpty()) {
+            player.sendMessage(color("&cНа этот предмет больше нельзя наложить зачарований из алтаря!"));
             player.playSound(player.getLocation(), Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             return;
         }
@@ -160,7 +136,7 @@ public class CustomTableGui {
             }
         }
 
-        // Проверка вероятности
+        // Проверка шанса на успех
         if (Math.random() * 100.0 > chance) {
             player.playSound(player.getLocation(), Sound.BLOCK_FIRE_EXTINGUISH, 1.0f, 0.8f);
             player.playSound(player.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.5f, 0.5f);
@@ -169,13 +145,23 @@ public class CustomTableGui {
             return;
         }
 
-        // Успех: случайный выбор из пула этого тира
-        CustomEnchant chosen = availableEnchants.get(new Random().nextInt(availableEnchants.size()));
-        int currentLvl = plugin.getEnchantManager().getEnchantLevel(target, chosen);
+        // Взвешенный ролл редкости (10% Легендарные, 30% Редкие, 60% Обычные)
+        double roll = Math.random() * 100.0;
+        CustomEnchant chosen;
 
-        // Расчет уровня: в пределах levelMin..levelMax, не ниже текущего + 1
-        int targetLvl = Math.max(levelMin, currentLvl + 1);
-        int finalLevel = Math.min(chosen.getMaxLevel(), Math.min(targetLvl, levelMax));
+        if (roll < 10.0 && !legendaryAvailable.isEmpty()) {
+            chosen = legendaryAvailable.get(new Random().nextInt(legendaryAvailable.size()));
+        } else if (roll < 40.0 && !rareAvailable.isEmpty()) {
+            chosen = rareAvailable.get(new Random().nextInt(rareAvailable.size()));
+        } else if (!commonAvailable.isEmpty()) {
+            chosen = commonAvailable.get(new Random().nextInt(commonAvailable.size()));
+        } else {
+            chosen = allAvailable.get(new Random().nextInt(allAvailable.size()));
+        }
+
+        // Расчет уровня: повышаем существующий на +1, либо выдаем стартовый
+        int currentLvl = plugin.getEnchantManager().getEnchantLevel(target, chosen);
+        int finalLevel = Math.min(chosen.getMaxLevel(), Math.max(1, currentLvl + 1));
 
         plugin.getEnchantManager().applyEnchant(target, chosen, finalLevel);
         inv.setItem(ITEM_SLOT, target);
@@ -186,7 +172,22 @@ public class CustomTableGui {
         player.spawnParticle(Particle.PORTAL, player.getLocation().add(0, 1.2, 0), 40, 0.4, 0.4, 0.4, 0.2);
 
         player.sendMessage(color("&aАлтарь наделил ваш предмет силой: &e" + chosen.getName() + " " + toRoman(finalLevel) + "&a!"));
-        updateTierButtons(inv, target, plugin);
+        updateEnchantButton(inv, target, plugin);
+    }
+
+    private static List<CustomEnchant> filterEnchants(List<String> ids, ItemStack target, VsamEnchants plugin) {
+        List<CustomEnchant> list = new ArrayList<>();
+        for (String id : ids) {
+            CustomEnchant enc = plugin.getEnchantManager().getEnchant(id);
+            if (enc == null || !enc.isEnabled()) continue;
+            if (enc.getTarget().includes(target.getType())) {
+                int curLvl = plugin.getEnchantManager().getEnchantLevel(target, enc);
+                if (curLvl < enc.getMaxLevel()) {
+                    list.add(enc);
+                }
+            }
+        }
+        return list;
     }
 
     public static ItemStack createGuiItem(Material mat, String name, List<String> lore) {

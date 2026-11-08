@@ -30,8 +30,6 @@ public class GlobalMiningListener implements Listener {
 
     private final VsamEnchants plugin;
     private final EnchantManager manager;
-
-    // Защита от бесконечной рекурсии вызова событий
     private final Set<String> processingBlocks = new HashSet<>();
 
     public GlobalMiningListener(VsamEnchants plugin) {
@@ -44,13 +42,17 @@ public class GlobalMiningListener implements Listener {
         Player player = event.getPlayer();
         if (player.getGameMode() == GameMode.CREATIVE) return;
 
+        Block centerBlock = event.getBlock();
+
+        // Защита от дюпа: не трогаем кастомный алтарь
+        if (plugin.getCustomTableManager().isCustomTableBlock(centerBlock)) {
+            return;
+        }
+
         ItemStack tool = player.getInventory().getItemInMainHand();
         if (tool.getType().isAir()) return;
 
-        Block centerBlock = event.getBlock();
         String centerKey = getBlockKey(centerBlock);
-
-        // Если блок ломается нашей внутренней логикой бура — пропускаем, чтобы не двоить
         if (processingBlocks.contains(centerKey)) return;
 
         // --- 1. ПАССИВНЫЕ ЭФФЕКТЫ ---
@@ -65,21 +67,17 @@ public class GlobalMiningListener implements Listener {
         }
 
         // --- 2. ОБРАБОТКА ЦЕНТРАЛЬНОГО БЛОКА ---
-        // Обрабатываем дроп исходного блока централизованно (Автоплавка, Магнит, Удвоение)
         handleDrops(centerBlock, tool, player, event.getExpToDrop());
         event.setDropItems(false);
         event.setExpToDrop(0);
 
-        // --- 3. МАССОВАЯ ДОБЫЧА (БУР 3x3 НА 1 ВПЕРЕД) ---
+        // --- 3. МАССОВАЯ ДОБЫЧА (БУР 3x3) ---
         int drillLevel = getLvl(tool, "drill");
         if (drillLevel > 0 && checkChance("drill", drillLevel)) {
             breakDrillArea(player, centerBlock, tool);
         }
     }
 
-    /**
-     * Ломает область 3х3 и на 1 блок вглубь по направлению взгляда (18 блоков).
-     */
     private void breakDrillArea(Player player, Block centerBlock, ItemStack tool) {
         BlockFace face = getPlayerDirection(player);
 
@@ -87,37 +85,36 @@ public class GlobalMiningListener implements Listener {
         int minY = 0, maxY = 0;
         int minZ = 0, maxZ = 0;
 
-        // Определяем плоскость 3х3 и направление "вперед" (вглубь блока)
         switch (face) {
             case UP -> {
                 minX = -1; maxX = 1;
                 minZ = -1; maxZ = 1;
-                minY = 0;  maxY = 1; // 0 - исходный слой, 1 - блок выше (вперед)
+                minY = 0;  maxY = 1;
             }
             case DOWN -> {
                 minX = -1; maxX = 1;
                 minZ = -1; maxZ = 1;
-                minY = -1; maxY = 0; // -1 - блок ниже (вперед), 0 - исходный слой
+                minY = -1; maxY = 0;
             }
             case NORTH -> {
                 minX = -1; maxX = 1;
                 minY = -1; maxY = 1;
-                minZ = -1; maxZ = 0; // -Z вперед
+                minZ = -1; maxZ = 0;
             }
             case SOUTH -> {
                 minX = -1; maxX = 1;
                 minY = -1; maxY = 1;
-                minZ = 0;  maxZ = 1; // +Z вперед
+                minZ = 0;  maxZ = 1;
             }
             case WEST -> {
                 minY = -1; maxY = 1;
                 minZ = -1; maxZ = 1;
-                minX = -1; maxX = 0; // -X вперед
+                minX = -1; maxX = 0;
             }
             case EAST -> {
                 minY = -1; maxY = 1;
                 minZ = -1; maxZ = 1;
-                minX = 0;  maxX = 1; // +X вперед
+                minX = 0;  maxX = 1;
             }
             default -> {
                 minX = -1; maxX = 1;
@@ -128,14 +125,16 @@ public class GlobalMiningListener implements Listener {
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
-                    // Центральный блок уже обработан в основном событии
                     if (x == 0 && y == 0 && z == 0) continue;
 
                     Block target = centerBlock.getRelative(x, y, z);
                     Material targetType = target.getType();
 
-                    // Не ломаем воздух, жидкости и неразрушимые блоки (бедрок, порталы)
                     if (targetType.isAir() || targetType == Material.BEDROCK || targetType == Material.BARRIER || target.getBlockData().getMaterial().isAir()) {
+                        continue;
+                    }
+
+                    if (plugin.getCustomTableManager().isCustomTableBlock(target)) {
                         continue;
                     }
 
@@ -144,7 +143,6 @@ public class GlobalMiningListener implements Listener {
 
                     processingBlocks.add(locKey);
 
-                    // Вызываем событие, чтобы приваты (WorldGuard и др.) могли отменить поломку
                     BlockBreakEvent breakEvent = new BlockBreakEvent(target, player);
                     plugin.getServer().getPluginManager().callEvent(breakEvent);
 
@@ -156,7 +154,6 @@ public class GlobalMiningListener implements Listener {
 
                     processingBlocks.remove(locKey);
 
-                    // Если инструмент сломался в процессе работы бура — прерываем цикл
                     if (tool.getType().isAir()) {
                         return;
                     }
@@ -165,24 +162,21 @@ public class GlobalMiningListener implements Listener {
         }
     }
 
-    /**
-     * Обрабатывает выпадение предметов (Автоплавка, Магнит, Опыт, Удвоение).
-     */
     private void handleDrops(Block block, ItemStack tool, Player player, int expToDrop) {
         Collection<ItemStack> drops = block.getDrops(tool, player);
 
         boolean autoSmelt = getLvl(tool, "autosmelt") > 0 && checkChance("autosmelt", getLvl(tool, "autosmelt"));
-        boolean magnet = getLvl(tool, "magnet") > 0 || getLvl(tool, "telepathy") > 0;
+        // Только Телепатия
+        boolean telepathy = getLvl(tool, "telepathy") > 0;
         int doubleOreLevel = getLvl(tool, "doubleore");
 
-        // Обработка опыта
         int expLevel = getLvl(tool, "experienced");
         if (expLevel > 0 && checkChance("experienced", expLevel)) {
             expToDrop += (expLevel * 2);
         }
 
         if (expToDrop > 0) {
-            if (magnet) {
+            if (telepathy) {
                 player.giveExp(expToDrop);
             } else {
                 ExperienceOrb orb = block.getWorld().spawn(block.getLocation().add(0.5, 0.5, 0.5), ExperienceOrb.class);
@@ -195,20 +189,18 @@ public class GlobalMiningListener implements Listener {
         for (ItemStack drop : drops) {
             ItemStack finalItem = drop.clone();
 
-            // 1. Автоплавка
             if (autoSmelt) {
                 finalItem = getSmeltedItem(finalItem);
             }
 
-            // 2. Двойная руда
             if (doubleOreLevel > 0 && checkChance("doubleore", doubleOreLevel)) {
                 if (isOreDrop(finalItem.getType())) {
                     finalItem.setAmount(finalItem.getAmount() * 2);
                 }
             }
 
-            // 3. Магнит / Телепатия
-            if (magnet) {
+            // Телепатия: сразу в инвентарь игрока
+            if (telepathy) {
                 Map<Integer, ItemStack> leftover = player.getInventory().addItem(finalItem);
                 for (ItemStack remain : leftover.values()) {
                     block.getWorld().dropItemNaturally(player.getLocation(), remain);
@@ -219,9 +211,6 @@ public class GlobalMiningListener implements Listener {
         }
     }
 
-    /**
-     * Таблица автоматической переплавки материалов (версия 1.16.5).
-     */
     private ItemStack getSmeltedItem(ItemStack item) {
         Material type = item.getType();
         Material result = switch (type) {
@@ -250,9 +239,6 @@ public class GlobalMiningListener implements Listener {
                 || name.equals("QUARTZ") || name.equals("NETHERITE_SCRAP");
     }
 
-    /**
-     * Снятие прочности инструмента с учетом ванильного зачарования Unbreaking.
-     */
     private void damageTool(Player player, ItemStack tool) {
         if (player.getGameMode() == GameMode.CREATIVE) return;
         ItemMeta meta = tool.getItemMeta();

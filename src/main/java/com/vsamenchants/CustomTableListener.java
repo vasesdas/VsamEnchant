@@ -51,38 +51,32 @@ public class CustomTableListener implements Listener {
     }
 
     /**
-     * Поломка стола: отменяем ванильное событие полностью во избежание выпадения обычного стола.
+     * ПРИОРИТЕТ LOWEST: Срабатывает САМЫМ ПЕРВЫМ до любых плагинов и слушателей.
+     * Полностью отменяет событие, пресекая ванильный дроп и сторонние обработчики.
      */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
-        if (block.getType() != Material.ENCHANTING_TABLE) return;
+        if (!manager.isCustomTableBlock(block)) return;
 
-        if (block.getState() instanceof TileState tileState) {
-            if (tileState.getPersistentDataContainer().has(manager.getTableItemKey(), PersistentDataType.BYTE)) {
-                // 1. Полностью отменяем ванильный слом, блокируя ванильный дроп стола
-                event.setCancelled(true);
+        // 1. Отменяем событие, запрещая ванильный дроп
+        event.setCancelled(true);
 
-                // 2. Вручную превращаем блок в воздух
-                block.setType(Material.AIR);
+        // 2. Превращаем блок в воздух
+        block.setType(Material.AIR);
 
-                // 3. Выпадаем ровно ОДИН кастомный стол (если не в креативе)
-                if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
-                    block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
-                }
-            }
+        // 3. Выпадаем строго ОДИН кастомный стол
+        if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
+            block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
         }
     }
 
-    /**
-     * Защита от дюпа при взрывах криперов, ТНТ и визеров.
-     */
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onEntityExplode(EntityExplodeEvent event) {
         handleExplosion(event.blockList());
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onBlockExplode(BlockExplodeEvent event) {
         handleExplosion(event.blockList());
     }
@@ -91,12 +85,10 @@ public class CustomTableListener implements Listener {
         Iterator<Block> iterator = blocks.iterator();
         while (iterator.hasNext()) {
             Block block = iterator.next();
-            if (block.getType() == Material.ENCHANTING_TABLE && block.getState() instanceof TileState tileState) {
-                if (tileState.getPersistentDataContainer().has(manager.getTableItemKey(), PersistentDataType.BYTE)) {
-                    iterator.remove(); // Убираем из стандартного списка взрыва
-                    block.setType(Material.AIR);
-                    block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
-                }
+            if (manager.isCustomTableBlock(block)) {
+                iterator.remove();
+                block.setType(Material.AIR);
+                block.getWorld().dropItemNaturally(block.getLocation(), manager.createTableItem(1));
             }
         }
     }
@@ -109,11 +101,9 @@ public class CustomTableListener implements Listener {
         Block block = event.getClickedBlock();
         if (block == null || block.getType() != Material.ENCHANTING_TABLE) return;
 
-        if (block.getState() instanceof TileState tileState) {
-            if (tileState.getPersistentDataContainer().has(manager.getTableItemKey(), PersistentDataType.BYTE)) {
-                event.setCancelled(true);
-                CustomTableGui.open(event.getPlayer(), plugin);
-            }
+        if (manager.isCustomTableBlock(block)) {
+            event.setCancelled(true);
+            CustomTableGui.open(event.getPlayer(), plugin);
         }
     }
 
@@ -127,7 +117,7 @@ public class CustomTableListener implements Listener {
         if (slot >= top.getSize()) {
             if (event.isShiftClick()) {
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
-                    CustomTableGui.updateTierButtons(top, top.getItem(CustomTableGui.ITEM_SLOT), plugin);
+                    CustomTableGui.updateEnchantButton(top, top.getItem(CustomTableGui.ITEM_SLOT), plugin);
                 });
             }
             return;
@@ -139,16 +129,13 @@ public class CustomTableListener implements Listener {
 
         if (!(event.getWhoClicked() instanceof Player player)) return;
 
-        if (slot == CustomTableGui.TIER_1_SLOT) {
-            CustomTableGui.processEnchant(player, top, 1, plugin);
-        } else if (slot == CustomTableGui.TIER_2_SLOT) {
-            CustomTableGui.processEnchant(player, top, 2, plugin);
-        } else if (slot == CustomTableGui.TIER_3_SLOT) {
-            CustomTableGui.processEnchant(player, top, 3, plugin);
+        // Клик по центральной кнопке зачарования
+        if (slot == CustomTableGui.ENCHANT_BUTTON_SLOT) {
+            CustomTableGui.processEnchant(player, top, plugin);
         }
 
         plugin.getServer().getScheduler().runTask(plugin, () -> {
-            CustomTableGui.updateTierButtons(top, top.getItem(CustomTableGui.ITEM_SLOT), plugin);
+            CustomTableGui.updateEnchantButton(top, top.getItem(CustomTableGui.ITEM_SLOT), plugin);
         });
     }
 

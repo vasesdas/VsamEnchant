@@ -48,7 +48,7 @@ public class VsamEnchants extends JavaPlugin {
 
         enchantManager.registerEnchant(new SimpleEnchant("drill", EnchantTarget.TOOL));
         enchantManager.registerEnchant(new SimpleEnchant("autosmelt", EnchantTarget.TOOL));
-        enchantManager.registerEnchant(new SimpleEnchant("magnet", EnchantTarget.TOOL));
+        // "magnet" удален, оставлена каноничная "telepathy"
         enchantManager.registerEnchant(new SimpleEnchant("telepathy", EnchantTarget.TOOL));
         enchantManager.registerEnchant(new SimpleEnchant("haste", EnchantTarget.TOOL));
         enchantManager.registerEnchant(new SimpleEnchant("nightminer", EnchantTarget.TOOL));
@@ -73,7 +73,7 @@ public class VsamEnchants extends JavaPlugin {
             getCommand("vsamenchant").setTabCompleter(cmd);
         }
 
-        getLogger().info("VsamEnchants v" + getDescription().getVersion() + " с Алтарем Зачарований успешно запущен!");
+        getLogger().info("VsamEnchants v" + getDescription().getVersion() + " успешно запущен!");
     }
 
     @Override

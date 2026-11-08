@@ -35,13 +35,9 @@ public class GlobalFarmingListener implements Listener {
         this.manager = plugin.getEnchantManager();
     }
 
-    /**
-     * Фермер: ПКМ по растению с мотыгой для ускорения роста.
-     */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onCropInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
-        // Защита от двойного вызова (Main Hand + Off Hand)
         if (event.getHand() != EquipmentSlot.HAND) return;
 
         Player player = event.getPlayer();
@@ -68,9 +64,6 @@ public class GlobalFarmingListener implements Listener {
         }
     }
 
-    /**
-     * Дровосек: Рубка всего дерева с поддержкой Магнита и Автоплавки.
-     */
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onLogBreak(BlockBreakEvent event) {
         Player player = event.getPlayer();
@@ -88,18 +81,13 @@ public class GlobalFarmingListener implements Listener {
         String centerKey = getBlockKey(initialBlock);
         if (processingLogs.contains(centerKey)) return;
 
-        // Отключаем ванильный дроп первого блока, чтобы обработать его через Магнит/Автоплавку
         handleDrops(initialBlock, tool, player, event.getExpToDrop());
         event.setDropItems(false);
         event.setExpToDrop(0);
 
-        // Рубим соединенные блоки дерева безопасным волновым алгоритмом (BFS)
         breakTreeBfs(player, initialBlock, tool);
     }
 
-    /**
-     * Итеративное срубание дерева через очередь (защита от StackOverflowError).
-     */
     private void breakTreeBfs(Player player, Block startBlock, ItemStack tool) {
         Queue<Block> queue = new ArrayDeque<>();
         Set<String> visited = new HashSet<>();
@@ -107,7 +95,7 @@ public class GlobalFarmingListener implements Listener {
         queue.add(startBlock);
         visited.add(getBlockKey(startBlock));
 
-        int maxLogs = 256; // Защита сервера от зависания при рубке огромных построек
+        int maxLogs = 256;
         int brokenCount = 0;
 
         while (!queue.isEmpty() && brokenCount < maxLogs) {
@@ -142,7 +130,6 @@ public class GlobalFarmingListener implements Listener {
                                 processingLogs.remove(key);
                             }
 
-                            // Прерываем работу, если топор сломался
                             if (tool.getType().isAir()) {
                                 return;
                             }
@@ -153,17 +140,15 @@ public class GlobalFarmingListener implements Listener {
         }
     }
 
-    /**
-     * Централизованная обработка выпадающих предметов (Магнит, Автоплавка в уголь).
-     */
     private void handleDrops(Block block, ItemStack tool, Player player, int exp) {
         Collection<ItemStack> drops = block.getDrops(tool, player);
 
         boolean autoSmelt = getLvl(tool, "autosmelt") > 0 && checkChance("autosmelt", getLvl(tool, "autosmelt"));
-        boolean magnet = getLvl(tool, "magnet") > 0 || getLvl(tool, "telepathy") > 0;
+        // Только Телепатия
+        boolean telepathy = getLvl(tool, "telepathy") > 0;
 
         if (exp > 0) {
-            if (magnet) {
+            if (telepathy) {
                 player.giveExp(exp);
             } else {
                 ExperienceOrb orb = block.getWorld().spawn(block.getLocation().add(0.5, 0.5, 0.5), ExperienceOrb.class);
@@ -176,13 +161,11 @@ public class GlobalFarmingListener implements Listener {
         for (ItemStack drop : drops) {
             ItemStack finalItem = drop.clone();
 
-            // Автоплавка дерева в древесный уголь
             if (autoSmelt && isLog(finalItem.getType())) {
                 finalItem = new ItemStack(Material.CHARCOAL, finalItem.getAmount());
             }
 
-            // Магнит
-            if (magnet) {
+            if (telepathy) {
                 Map<Integer, ItemStack> leftover = player.getInventory().addItem(finalItem);
                 for (ItemStack remain : leftover.values()) {
                     block.getWorld().dropItemNaturally(player.getLocation(), remain);

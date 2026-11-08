@@ -1,8 +1,69 @@
+# ========================================================
+#            Настройки Алтаря Зачарований
+# ========================================================
+custom-table:
+  item:
+    name: "&5&lАлтарь Зачарований"
+    lore:
+      - "&7Древний чародейский стол, способный"
+      - "&7накладывать могущественные кастомные чары."
+      - ""
+      - "&eПоставьте и нажмите ПКМ для открытия."
+
+  recipe:
+    enabled: true
+    shape:
+      - "DND"
+      - "OEO"
+      - "OOO"
+    ingredients:
+      D: DIAMOND
+      N: NETHER_STAR
+      O: OBSIDIAN
+      E: ENCHANTING_TABLE
+
+  # Единое Таинство Зачарования
+  enchanting:
+    exp-cost: 30        # Стоимость: 30 уровней
+    lapis-cost: 3       # Стоимость: 3 лазурита
+    success-chance: 80.0 # Шанс успеха: 80%
+
+    pools:
+      # Легендарные чары (~10% шанс)
+      legendary:
+        - execution
+        - antitotem
+        - drill
+
+      # Редкие чары (~30% шанс)
+      rare:
+        - vampirism
+        - lightning
+        - stun
+        - titan
+        - dodge
+        - doubleore
+        - autosmelt
+        - telepathy     # Только Телепатия
+        - lumberjack
+
+      # Обычные базовые чары (~60% шанс)
+      common:
+        - poison
+        - bleeding
+        - hunter
+        - thornsplus
+        - haste
+        - nightminer
+        - experienced
+        - farmer
+
 economy:
   enabled: false
   apply-cost: 1000.0
   remove-cost: 500.0
   upgrade-chance-cost: 250.0
+
 enchants:
   vampirism:
     enabled: true
@@ -68,7 +129,7 @@ enchants:
     enabled: true
     name: "&4Казнь"
     max-level: 3
-    chance: 15.0 # Базовый шанс 15%
+    chance: 15.0
     cooldown: 0
     description:
       - "&7Шанс мгновенно добить противника,"
@@ -85,18 +146,12 @@ enchants:
     max-level: 1
     chance: 100.0
     description: ["&7Автоматически переплавляет руды."]
-  magnet:
-    enabled: true
-    name: "&bМагнит"
-    max-level: 1
-    chance: 100.0
-    description: ["&7Добытые блоки летят сразу в инвентарь."]
   telepathy:
     enabled: true
     name: "&5Телепатия"
     max-level: 1
     chance: 100.0
-    description: ["&7То же самое, что и Магнит."]
+    description: ["&7Добытые блоки и опыт мгновенно летят в инвентарь."]
   haste:
     enabled: true
     name: "&eСпешка"
@@ -126,97 +181,10 @@ enchants:
     name: "&aФермер"
     max-level: 3
     chance: 100.0
-    description: [ "&7ПКМ по растению ускоряет его рост." ]
+    description: ["&7ПКМ по растению ускоряет его рост."]
   lumberjack:
     enabled: true
     name: "&6Дровосек"
     max-level: 1
     chance: 100.0
-    description: [ "&7Срубает всё дерево целиком." ]
-# ========================================================
-#            Настройки Алтаря Зачарований
-# ========================================================
-custom-table:
-  item:
-    name: "&5&lАлтарь Зачарований"
-    lore:
-      - "&7Древний чародейский стол, способный"
-      - "&7накладывать могущественные кастомные чары."
-      - ""
-      - "&eПоставьте и нажмите ПКМ для открытия."
-
-  recipe:
-    enabled: true
-    shape:
-      - "DND"
-      - "OEO"
-      - "OOO"
-    ingredients:
-      D: DIAMOND
-      N: NETHER_STAR
-      O: OBSIDIAN
-      E: ENCHANTING_TABLE
-
-  # Разделение по тирам, пулам зачарований и затратам
-  tiers:
-    tier-1:
-      name: "&aОбычное Таинство"
-      description: "Базовые чары I уровня (Спешка, Охотник, Опытный...)"
-      chance: 80.0      # Высокий шанс на базовые чары
-      exp-levels: 10    # 10 уровней
-      lapis-cost: 1
-      level-min: 1
-      level-max: 1
-      enchants:
-        - poison
-        - bleeding
-        - hunter
-        - thornsplus
-        - haste
-        - nightminer
-        - experienced
-        - farmer
-
-    tier-2:
-      name: "&bДревнее Таинство"
-      description: "Редкие чары I-II уровня (Вампиризм, Молния, Магнит...)"
-      chance: 60.0
-      exp-levels: 25
-      lapis-cost: 3
-      level-min: 1
-      level-max: 2
-      enchants:
-        - vampirism
-        - lightning
-        - stun
-        - titan
-        - dodge
-        - doubleore
-        - autosmelt
-        - magnet
-        - telepathy
-        - lumberjack
-
-    tier-3:
-      name: "&6Мифическое Таинство"
-      description: "Легендарные анархо-чары (Казнь, Анти-Тотем, Бур 3x3...)"
-      chance: 40.0
-      exp-levels: 35
-      lapis-cost: 5
-      level-min: 2
-      level-max: 4
-      enchants:
-        - execution
-        - antitotem
-        - drill
-        - vampirism
-        - lightning
-        - titan
-        - dodge
-        - doubleore
-
-  economy:
-    enabled: false
-    apply-cost: 1000.0
-    remove-cost: 500.0
-    upgrade-chance-cost: 250.0
+    description: ["&7Срубает всё дерево целиком."]

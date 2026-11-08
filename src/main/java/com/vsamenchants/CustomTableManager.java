@@ -4,6 +4,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.block.Block;
+import org.bukkit.block.TileState;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.inventory.ItemStack;
@@ -15,7 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Менеджер кастомного чародейского стола и его динамического крафта.
+ * Менеджер кастомного чародейского стола и его рецепта.
  */
 public class CustomTableManager {
 
@@ -34,9 +36,6 @@ public class CustomTableManager {
         return tableItemKey;
     }
 
-    /**
-     * Создает предмет кастомного чародейского стола.
-     */
     public ItemStack createTableItem(int amount) {
         ItemStack item = new ItemStack(Material.ENCHANTING_TABLE, amount);
         ItemMeta meta = item.getItemMeta();
@@ -52,7 +51,6 @@ public class CustomTableManager {
         }
         meta.setLore(lore);
 
-        // NBT/PDC метка стола
         meta.getPersistentDataContainer().set(tableItemKey, PersistentDataType.BYTE, (byte) 1);
         item.setItemMeta(meta);
         return item;
@@ -65,8 +63,16 @@ public class CustomTableManager {
     }
 
     /**
-     * Регистрирует или обновляет ShapedRecipe в Bukkit на основе config.yml.
+     * Проверяет, является ли блок в мире установленным кастомным алтарем.
      */
+    public boolean isCustomTableBlock(Block block) {
+        if (block == null || block.getType() != Material.ENCHANTING_TABLE) return false;
+        if (block.getState() instanceof TileState tileState) {
+            return tileState.getPersistentDataContainer().has(tableItemKey, PersistentDataType.BYTE);
+        }
+        return false;
+    }
+
     public void registerRecipe() {
         Bukkit.removeRecipe(recipeKey);
 
