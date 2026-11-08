@@ -133,3 +133,51 @@ enchants:
     max-level: 1
     chance: 100.0
     description: [ "&7Срубает всё дерево целиком." ]
+# Настройки Алтаря Зачарований
+custom-table:
+  item:
+    name: "&5&lАлтарь Зачарований"
+    lore:
+      - "&7Древний чародейский стол, способный"
+      - "&7накладывать могущественные кастомные чары."
+      - ""
+      - "&eПоставьте и нажмите ПКМ для открытия."
+
+  # Крафт стола (можно настроить в игре командой /ve setcraft)
+  recipe:
+    enabled: true
+    shape:
+      - "DND"
+      - "OEO"
+      - "OOO"
+    ingredients:
+      D: DIAMOND
+      N: NETHER_STAR
+      O: OBSIDIAN
+      E: ENCHANTING_TABLE
+
+  # Настройки рангов зачарования в меню алтаря
+  tiers:
+    tier-1:
+      name: "&aОбычное Таинство"
+      chance: 75.0      # Шанс успеха в %
+      exp-levels: 10    # Стоимость уровней
+      lapis-cost: 1     # Стоимость лазурита (0 для отключения)
+    tier-2:
+      name: "&bДревнее Таинство"
+      chance: 50.0
+      exp-levels: 25
+      lapis-cost: 3
+    tier-3:
+      name: "&6Мифическое Таинство"
+      chance: 35.0
+      exp-levels: 40
+      lapis-cost: 5
+
+economy:
+  enabled: false
+  apply-cost: 1000.0
+  remove-cost: 500.0
+  upgrade-chance-cost: 250.0
+
+# ... остальные параметры enchants остаются без изменений

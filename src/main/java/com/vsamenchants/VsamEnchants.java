@@ -15,6 +15,7 @@ public class VsamEnchants extends JavaPlugin {
     private EconomyManager economyManager;
     private GuiManager guiManager;
     private EnchantBookListener enchantBookListener;
+    private CustomTableManager customTableManager;
 
     @Override
     public void onEnable() {
@@ -28,6 +29,7 @@ public class VsamEnchants extends JavaPlugin {
         this.economyManager = new EconomyManager(this);
         this.guiManager = new GuiManager(this);
         this.enchantBookListener = new EnchantBookListener(this);
+        this.customTableManager = new CustomTableManager(this);
 
         // --- РЕГИСТРАЦИЯ ЗАЧАРОВАНИЙ ---
         EnchantExecution executionEnchant = new EnchantExecution();
@@ -62,6 +64,7 @@ public class VsamEnchants extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new GlobalMiningListener(this), this);
         getServer().getPluginManager().registerEvents(enchantBookListener, this);
         getServer().getPluginManager().registerEvents(new GlobalFarmingListener(this), this);
+        getServer().getPluginManager().registerEvents(new CustomTableListener(this), this);
 
         // Регистрация команд
         VsamCommand cmd = new VsamCommand(this);
@@ -70,7 +73,7 @@ public class VsamEnchants extends JavaPlugin {
             getCommand("vsamenchant").setTabCompleter(cmd);
         }
 
-        getLogger().info("VsamEnchants v" + getDescription().getVersion() + " успешно запущен!");
+        getLogger().info("VsamEnchants v" + getDescription().getVersion() + " с Алтарем Зачарований успешно запущен!");
     }
 
     @Override
@@ -104,5 +107,9 @@ public class VsamEnchants extends JavaPlugin {
 
     public EnchantBookListener getEnchantBookListener() {
         return enchantBookListener;
+    }
+
+    public CustomTableManager getCustomTableManager() {
+        return customTableManager;
     }
 }
